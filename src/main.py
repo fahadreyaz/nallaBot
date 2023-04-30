@@ -15,11 +15,11 @@ USERNAME = os.getenv('USERNAME')
 PASSWORD = os.getenv('PASSWORD')
 
 reddit = praw.Reddit(
-    client_id = CLIENT_ID,
-    client_secret = SECRET_KEY,
-    username = USERNAME,
-    password = PASSWORD,
-    user_agent = 'nallaBot'
+    client_id=CLIENT_ID,
+    client_secret=SECRET_KEY,
+    username=USERNAME,
+    password=PASSWORD,
+    user_agent='nallaBot'
 )
 
 auth_user = reddit.user.me()
@@ -27,6 +27,7 @@ auth_user = reddit.user.me()
 responseFile = open("responses.json", "r")
 responses = json.load(responseFile)
 custom_reply_users = list(responses["custom"])
+
 
 class Analyse:
     def __init__(self, comment: praw.reddit.Comment):
@@ -39,7 +40,7 @@ class Analyse:
 
     def setTarget(self):
         is_reply = not comment.parent_id.startswith('t3_')
-        body = self.comment.body.lower().replace('\n','').strip()
+        body = self.comment.body.lower().replace('\n', '').strip()
         wordList = body.split()
         target = ''
         if 'botstats' in wordList:
@@ -51,8 +52,8 @@ class Analyse:
         else:
             mentions = []
             for word in wordList:
-                if word.startswith('u/') and len(word)>=4 and word.replace('u/','') != auth_user.name.lower():
-                    word = word.replace('u/','')
+                if word.startswith('u/') and len(word) >= 4 and word.replace('u/', '') != auth_user.name.lower():
+                    word = word.replace('u/', '')
                     mentions.append(word)
             if len(mentions) != 0:
                 target = reddit.redditor(mentions[0])
@@ -69,16 +70,23 @@ class Analyse:
         return target
 
     def setTimeLimit(self):
-        wordList = self.comment.body.lower().split()
+        wordList = re.findall(r'\d+|\D+', self.comment.body)
         factor = 7
-        if 'day' in wordList or 'days' in wordList:
-            factor = 1
-        elif 'week' in wordList or 'weeks' in wordList:
-            factor = 7
-        elif 'month' in wordList or 'months' in wordList:
-            factor = 30
-        elif 'year' in wordList or 'years' in wordList:
-            factor = 365
+        for i in range(len(wordList)):
+            if wordList[i].isdigit() and i < len(wordList)-1:
+                unit = wordList[i+1].lower()
+                if 'day' in unit or 'days' in unit:
+                    factor = 1
+                    break
+                elif 'week' in unit or 'weeks' in unit:
+                    factor = 7
+                    break
+                elif 'month' in unit or 'months' in unit:
+                    factor = 30
+                    break
+                elif 'year' in unit or 'years' in unit:
+                    factor = 365
+                    break
 
         j = 1
         for word in wordList:
@@ -117,7 +125,8 @@ class Analyse:
             total_comments += "+"
             total_votes += "+"
 
-        comments_per_day = str(round(int(total_comments.replace("+",""))/days,2))
+        comments_per_day = str(
+            round(int(total_comments.replace("+", ""))/days, 2))
         if reachedLimit:
             comments_per_day += "+"
 
@@ -138,7 +147,7 @@ Comments per day: {comments_per_day}
 ```
 '''
 
-        self.comments_per_day = float(comments_per_day.replace("+",""))
+        self.comments_per_day = float(comments_per_day.replace("+", ""))
 
         return stat_str
 
@@ -162,7 +171,8 @@ Comments per day: {comments_per_day}
                 key = "extreme"
             else:
                 key = "max"
-            response = random.choice(responses["standard"][key]).replace("$cpd", str(self.comments_per_day))
+            response = random.choice(responses["standard"][key]).replace(
+                "$cpd", str(self.comments_per_day))
         else:
             response = random.choice(responses["custom"][target_name])
 
@@ -173,6 +183,7 @@ Here's what I think about you based on the above stats:
 '''
 
         return judgementText
+
 
 while True:
     inbox = reddit.inbox.unread(limit=None)
@@ -191,7 +202,7 @@ while True:
                     break
                 if auth_user.name.lower() in c.body.lower():
                     mention_utc = int(comment.created_utc)
-                    mentions_count+=1
+                    mentions_count += 1
             if mentions_count > mentions_limit:
                 reply = f"You have already called the bot {mentions_count} times in last 1 hour, try again in {int((mention_utc+3600-int(time()))/60)} minutes"
                 comment.reply(body=reply)
