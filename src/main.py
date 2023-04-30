@@ -38,7 +38,7 @@ class Analyse:
         self.judgement = self.getJudgement()
 
     def setTarget(self):
-        is_reply = not comment.parent().id.startswith('t3_')
+        is_reply = not comment.parent_id.startswith('t3_')
         body = self.comment.body.lower().replace('\n','').strip()
         wordList = body.split()
         target = ''
@@ -122,7 +122,7 @@ class Analyse:
             comments_per_day += "+"
 
         intro = "Oh so you wanna see my stats from last {self.timeLimit} days? Here you go!"
-        if not self.target.name.lower() == auth_user.name:
+        if not self.target.name.lower() == auth_user.name.lower():
             if self.target.name.lower() == self.caller.name.lower():
                 intro = f"Beep Boop! nallaBot here to judge you!\n\nHere are your comment stats from last {self.timeLimit} days:"
             else:
