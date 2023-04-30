@@ -143,6 +143,9 @@ Comments per day: {comments_per_day}
         return stat_str
 
     def getJudgement(self):
+        if self.target.name.lower() == auth_user.name.lower():
+            return ""
+
         cpd = int(round(self.comments_per_day))
         target_name = self.target.name.lower()
         if target_name not in custom_reply_users:
@@ -197,7 +200,7 @@ while True:
 
             analysis = Analyse(comment)
 
-            links = f"^([github](https://github.com) | [how to use](https://reddit.com))"
+            links = f"^([github](https://github.com/fahadreyaz/nallaBot) | [how to use](https://reddit.com))"
             reply = analysis.stats + analysis.judgement + links
             comment.reply(body=reply)
 
