@@ -156,7 +156,7 @@ Comments per day: {comments_per_day}
                 key = "low"
             elif cpd <= 15:
                 key = "mid"
-            elif cpd <= 25:
+            elif cpd <= 30:
                 key = "high"
             elif cpd <= 130:
                 key = "extreme"
