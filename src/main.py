@@ -200,7 +200,7 @@ while True:
 
             analysis = Analyse(comment)
 
-            links = f"^([github](https://github.com/fahadreyaz/nallaBot) | [how to use](https://reddit.com))"
+            links = f"^([github](https://github.com/fahadreyaz/nallaBot) | [how to use](https://www.reddit.com/user/nallaBot/comments/133nl5n))"
             reply = analysis.stats + analysis.judgement + links
             comment.reply(body=reply)
 
