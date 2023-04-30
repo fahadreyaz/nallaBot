@@ -58,7 +58,7 @@ class Analyse:
                 target = reddit.redditor(mentions[0])
             else:
                 if is_reply:
-                    parent_author = comment.parent().author
+                    parent_author = reddit.redditor(comment.parent().author)
                     if parent_author.id == auth_user.id:
                         target = comment.author
                     else:
@@ -194,7 +194,7 @@ while True:
                     mentions_count+=1
             if mentions_count > mentions_limit:
                 reply = f"You have already called the bot {mentions_count} times in last 1 hour, try again in {int((mention_utc+3600-int(time()))/60)} minutes"
-                print(reply)
+                comment.reply(body=reply)
                 comment.mark_read()
                 continue
 
