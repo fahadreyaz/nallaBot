@@ -121,7 +121,7 @@ class Analyse:
         if reachedLimit:
             comments_per_day += "+"
 
-        intro = "Oh so you wanna see my stats from last {self.timeLimit} days? Here you go!"
+        intro = f"Oh so you wanna see my stats from last {self.timeLimit} days? Here you go!"
         if not self.target.name.lower() == auth_user.name.lower():
             if self.target.name.lower() == self.caller.name.lower():
                 intro = f"Beep Boop! nallaBot here to judge you!\n\nHere are your comment stats from last {self.timeLimit} days:"
