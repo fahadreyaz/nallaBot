@@ -69,7 +69,7 @@ class Analyse:
         return target
 
     def setTimeLimit(self):
-        wordList = re.sub(r'[^\w\s]','',self.comment.body).strip()
+        wordList = self.comment.body.strip()
         factor = 7
         if 'day' in wordList or 'days' in wordList:
             factor = 1
