@@ -184,7 +184,7 @@ while True:
                 continue
 
             mentions_count = 1
-            mentions_limit = 100
+            mentions_limit = 3
             mention_utc = 0
             for c in comment.author.comments.new(limit=None):
                 if c.created_utc < int(time()) - 3600:
