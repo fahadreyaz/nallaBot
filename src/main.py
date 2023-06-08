@@ -1,4 +1,4 @@
-from time import time
+import time
 import json
 import praw
 import os
@@ -100,7 +100,7 @@ class Analyse:
         return limit
 
     def getStats(self):
-        limit_utc = int(time()) - self.timeLimit*60*60*24
+        limit_utc = int(time.time()) - self.timeLimit*60*60*24
         last_comment_utc = 0
 
         total_comments = int(0)
@@ -123,7 +123,7 @@ class Analyse:
         reachedLimit = False
         if int(total_comments) >= 975:
             reachedLimit = True
-            days = int((time() - last_comment_utc)/86400)
+            days = int((time.time() - last_comment_utc)/86400)
             total_comments += "+"
             total_votes += "+"
 
@@ -188,6 +188,7 @@ Here's what I think about you based on the above stats:
 
 
 while True:
+    time.sleep(3)
     inbox = reddit.inbox.unread(limit=None)
     for comment in inbox:
         try:
@@ -200,13 +201,13 @@ while True:
             mentions_limit = 3
             mention_utc = 0
             for c in comment.author.comments.new(limit=None):
-                if c.created_utc < int(time()) - 3600:
+                if c.created_utc < int(time.time()) - 3600:
                     break
                 if auth_user.name.lower() in c.body.lower():
                     mention_utc = int(comment.created_utc)
                     mentions_count += 1
             if mentions_count > mentions_limit:
-                reply = f"You have already called the bot {mentions_count} times in last 1 hour, try again in {int((mention_utc+3600-int(time()))/60)} minutes"
+                reply = f"You have already called the bot {mentions_count} times in last 1 hour, try again in {int((mention_utc+3600-int(time.time()))/60)} minutes"
                 comment.reply(body=reply)
                 comment.mark_read()
                 continue
@@ -219,6 +220,8 @@ while True:
 
             comment.mark_read()
             print(f"replied to u/{analysis.caller}")
+
+            time.sleep(1)
 
         except Exception as e:
             if e is RequestException:
