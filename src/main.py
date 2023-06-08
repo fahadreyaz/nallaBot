@@ -7,6 +7,8 @@ import re
 import random
 import traceback
 
+from prawcore import RequestException
+
 load_dotenv()
 
 CLIENT_ID = os.getenv('CLIENT_ID')
@@ -218,7 +220,9 @@ while True:
             comment.mark_read()
             print(f"replied to u/{analysis.caller}")
 
-        except Exception:
+        except Exception as e:
+            if e is RequestException:
+                pass
             comment.mark_read()
             print(f"Error in processing comment: reddit.com{comment.context}")
             print(traceback.format_exc())
