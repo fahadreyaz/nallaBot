@@ -133,6 +133,8 @@ class Analyse:
         listStr = listStr[1:-1]
         self.subsList = listStr
 
+        listStr = listStr.replace("\n\n","\n")
+
         total_comments = str(total_comments)
         total_votes = str(total_votes)
 
