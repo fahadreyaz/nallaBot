@@ -4,10 +4,11 @@ import praw
 import os
 from dotenv import load_dotenv
 import re
-import random
 import traceback
 
 from prawcore import RequestException
+
+from api import OpenAi
 
 load_dotenv()
 
@@ -26,9 +27,9 @@ reddit = praw.Reddit(
 
 auth_user = reddit.user.me()
 
-responseFile = open("responses.json", "r")
-responses = json.load(responseFile)
-custom_reply_users = list(responses["custom"])
+infoFile = open("info.json", "r")
+info = json.load(infoFile)
+custom_users = list(info["custom"])
 
 
 class Analyse:
@@ -106,14 +107,31 @@ class Analyse:
         total_comments = int(0)
         total_votes = int(0)
 
+        subsList = []
+
         user_comments = self.target.comments.new(limit=None)
         for comment in user_comments:
             if comment.created_utc <= limit_utc:
                 break
+            subsList.append(comment.subreddit.display_name)
             total_comments += 1
             total_votes += comment.score
 
             last_comment_utc = int(comment.created_utc)
+
+        subsDict = {}
+        for sub in subsList:
+            if sub in subsDict:
+                subsDict[sub] += 1
+            else:
+                subsDict[sub] = 1
+
+        listStr = ""
+        for sub in subsDict.keys():
+            listStr += f"\nr/{sub}: {subsDict[sub]}\n"
+
+        listStr = listStr[1:-1]
+        self.subsList = listStr
 
         total_comments = str(total_comments)
         total_votes = str(total_votes)
@@ -128,7 +146,7 @@ class Analyse:
             total_votes += "+"
 
         comments_per_day = str(
-            round(int(total_comments.replace("+", ""))/days, 2))
+            round(int(total_comments.replace("+", ""))/days, 1))
         if reachedLimit:
             comments_per_day += "+"
 
@@ -137,7 +155,7 @@ class Analyse:
             if self.target.name.lower() == self.caller.name.lower():
                 intro = f"Beep Boop! nallaBot here to judge you!\n\nHere are your comment stats from last {self.timeLimit} days:"
             else:
-                intro = f"Beep Boop! nallaBot here to judge u/{self.target.name}!\n\nHere's their comment stats from last {self.timeLimit} days:"
+                intro = f"Beep Boop! nallaBot here to judge u/{self.target.name}!\n\nHere's your comment stats from last {self.timeLimit} days:"
 
         stat_str = f'''
 {intro}
@@ -147,9 +165,17 @@ Total comments: {total_comments}
 Total votes: {total_votes}
 Comments per day: {comments_per_day}
 ```
+
+Here's a detailed list of your comments activity:
+```
+{listStr}
+```
+
 '''
 
-        self.comments_per_day = float(comments_per_day.replace("+", ""))
+        self.comments_per_day = int(float(comments_per_day.replace("+","")))
+        self.total_comments = int(float(total_comments.replace("+","")))
+        self.total_votes = int(total_votes)
 
         return stat_str
 
@@ -157,38 +183,40 @@ Comments per day: {comments_per_day}
         if self.target.name.lower() == auth_user.name.lower():
             return ""
 
-        cpd = int(round(self.comments_per_day))
-        target_name = self.target.name.lower()
-        if target_name not in custom_reply_users:
-            key = ""
-            if cpd <= 3:
-                key = "min"
-            elif cpd <= 8:
-                key = "low"
-            elif cpd <= 15:
-                key = "mid"
-            elif cpd <= 30:
-                key = "high"
-            elif cpd <= 130:
-                key = "extreme"
-            else:
-                key = "max"
-            response = random.choice(responses["standard"][key]).replace(
-                "$cpd", str(self.comments_per_day))
+        target = self.target
+
+        comments_count = self.total_comments
+        cpd = self.comments_per_day
+        votes = self.total_votes
+        time_limit = self.timeLimit
+
+        extraInfo = []
+
+        subsList = self.subsList.replace("\n",",").replace(",,",", ")
+
+        if target.name.lower() in custom_users:
+            extraInfo = info["custom"][target.name.lower()]
+
+
+        if cpd <= 15:
+            prompt = f"My reddit username is {target}, I have posted {comments_count} comments on reddit in last {time_limit} days and got a total of {votes} votes on them. I have posted {cpd} comments per day on reddit on average. Here is a detailed list of subreddits I have been active in with number of comments i have made in them: [{subsList}]. Here is a list of some extra info about me: {str(extraInfo)}. Respond in a snarky way appreciating me for my low reddit usage in under 20-25 words"
+        elif cpd <=30:
+            prompt = f"My reddit username is {target}, I have posted {comments_count} comments on reddit in last {time_limit} days and got a total of {votes} votes on them. I have posted {cpd} comments per day on reddit on average. Here is a detailed list of subreddits I have been active in with number of comments i have made in them: [{subsList}]. Here is a list of some extra info about me: {str(extraInfo)}. Respond in a snarky way brutally roasting me for my high reddit usage in under 40-50 words"
         else:
-            response = random.choice(responses["custom"][target_name])
+            prompt = f"My reddit username is {target}, I have posted {comments_count} comments on reddit in last {time_limit} days and got a total of {votes} votes on them. I have posted {cpd} comments per day on reddit on average. Here is a detailed list of subreddits I have been active in with number of comments i have made in them: [{subsList}]. Here is a list of some extra info about me: {str(extraInfo)}. Respond in a snarky way brutally roasting me for my extremely high reddit usage in under 60-80 words [use 50% swearing]"
+
+        response = OpenAi(prompt=prompt).getResponse()
 
         judgementText = f'''
-Here's what I think about you based on the above stats:
+Here's a message for you based on the above stats:
 
->!{response}!<\n
-'''
+>!{response}!<
+        '''
 
         return judgementText
-
-
+print("Bot running...")
 while True:
-    time.sleep(3)
+    time.sleep(2)
     inbox = reddit.inbox.unread(limit=None)
     for comment in inbox:
         try:
@@ -214,7 +242,7 @@ while True:
 
             analysis = Analyse(comment)
 
-            links = f"^([github](https://github.com/fahadreyaz/nallaBot) | [how to use](https://www.reddit.com/user/nallaBot/comments/133nl5n))"
+            links = f"\n\n^([github](https://github.com/fahadreyaz/nallaBot) | [how to use](https://www.reddit.com/user/nallaBot/comments/133nl5n))"
             reply = analysis.stats + analysis.judgement + links
             comment.reply(body=reply)
 
