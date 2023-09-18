@@ -5,7 +5,8 @@ import os
 from dotenv import load_dotenv
 import re
 import traceback
-
+import matplotlib.pyplot as plt
+import base64
 from prawcore import RequestException
 
 from api import OpenAi
@@ -103,12 +104,14 @@ class Analyse:
     def getStats(self):
         limit_utc = int(time.time()) - self.timeLimit*60*60*24
         last_comment_utc = 0
-
         total_comments = int(0)
         total_votes = int(0)
-
         subsList = []
+        x_values = []
+        y1_values = []
+        y2_values = []
 
+        reply_count = 0  # initialize reply count
         user_comments = self.target.comments.new(limit=None)
         for comment in user_comments:
             if comment.created_utc <= limit_utc:
@@ -116,69 +119,82 @@ class Analyse:
             subsList.append(comment.subreddit.display_name)
             total_comments += 1
             total_votes += comment.score
+            x_values.append(comment.created_utc)
+            y1_values.append(comment.score)
+            y2_values.append(1)
 
+
+            # count number of replies to this comment
+            reply_count += sum(1 for reply in comment.replies if reply.author == self.target)
             last_comment_utc = int(comment.created_utc)
-
         subsDict = {}
         for sub in subsList:
             if sub in subsDict:
                 subsDict[sub] += 1
             else:
                 subsDict[sub] = 1
-
         listStr = ""
+        # Plot the data
+        fig, ax = plt.subplots()
+        ax.plot(x_values, y1_values, 'b-', label='Upvotes')
+        ax.plot(x_values, y2_values, 'r-', label='Comment Count')
+        ax.set_xlabel('Days')
+        ax.set_ylabel('Upvotes/Comment Count')
+        ax.legend()
+        # Save the plot to a file
+        plt.savefig('plot.png')
+
+        # Add the plot to the reply
+
+
         for sub in subsDict.keys():
             listStr += f"\nr/{sub}: {subsDict[sub]}\n"
-
         listStr = listStr[1:-1]
         self.subsList = listStr
-
         listStr = listStr.replace("\n\n","\n")
-
         total_comments = str(total_comments)
         total_votes = str(total_votes)
-
         days = self.timeLimit
-
         reachedLimit = False
         if int(total_comments) >= 975:
             reachedLimit = True
             days = int((time.time() - last_comment_utc)/86400)
             total_comments += "+"
             total_votes += "+"
-
         comments_per_day = str(
             round(int(total_comments.replace("+", ""))/days, 1))
         if reachedLimit:
             comments_per_day += "+"
-
+        # calculate engagement rate
+        if total_comments != "0":
+            engagement_rate = str(round(reply_count/int(total_comments), 2))
+        else:
+            engagement_rate = "N/A"
         intro = f"Oh so you wanna see my stats from last {self.timeLimit} days? Here you go!"
         if not self.target.name.lower() == auth_user.name.lower():
             if self.target.name.lower() == self.caller.name.lower():
                 intro = f"Beep Boop! nallaBot here to judge you!\n\nHere are your comment stats from last {self.timeLimit} days:"
             else:
                 intro = f"Beep Boop! nallaBot here to judge u/{self.target.name}!\n\nHere's your comment stats from last {self.timeLimit} days:"
+        with open('plot.png', 'rb') as f:
+            img_data = f.read()
+            img_str = base64.b64encode(img_data).decode('utf-8')
 
         stat_str = f'''
-{intro}
-
-```
-Total comments: {total_comments}
-Total votes: {total_votes}
-Comments per day: {comments_per_day}
-```
-
-Here's a detailed list of your comments activity:
-```
-{listStr}
-```
-
-'''
-
+            {intro}
+            Total comments: {total_comments}
+            Total votes: {total_votes}
+            Comments per day: {comments_per_day}
+            Engagement rate (Avg replies per comment): {engagement_rate}
+            Here's a detailed list of your comments activity:
+            {listStr}
+            Here's a plot of your activity:
+            <img src="data:image/png;base64,{img_str}" alt="Plot">
+        '''
+        os.remove('plot.png')
         self.comments_per_day = int(float(comments_per_day.replace("+","")))
         self.total_comments = int(float(total_comments.replace("+","")))
         self.total_votes = int(total_votes)
-
         return stat_str
 
     def getJudgement(self):
